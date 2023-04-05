@@ -22,7 +22,7 @@
 # You need to get user's AAD object ID.  You can use this Azure AD commandlet for that: https://docs.microsoft.com/en-us/powershell/module/azuread/get-azureaduser?view=azureadps-2.0
 # Dates need to be in ISO 8601 format; adjust dates to span no more than 24 hours
 
-$a=Get-powerbiActivityEvent -StartDateTime '2020-06-23T19:00:00.000' -EndDateTime '2020-06-23T20:59:59.999' -ActivityType 'ViewReport' -User [USER AAD ObjectId GUID] | ConvertFrom-Json
+$a=Get-powerbiActivityEvent -StartDateTime '2023-03-23T19:00:00.000' -EndDateTime '2023-03-23T23:59:59.999' -ActivityType 'ViewReport' -User [USER UPN] | ConvertFrom-Json
 
 # you can use any attribute value to filter results further; E.g., specific event request Id is used to analyze just one specific event
 $a | Select RequestId, ReportName, WorkspaceName |where {($_.RequestId -eq '[RequestId GUID of the event]')}
