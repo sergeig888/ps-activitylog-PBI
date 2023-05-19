@@ -157,3 +157,75 @@ for($s=0; $s -le 30; $s++)
        Write-host ""       
     }       
 }
+
+# SCENARIO: 1. Address common Power BI tenant Admin/InfoSec asks to help identify active B2B users
+#           2. Identify artifacts that active B2B users have access to 
+# This code fragment can also be used to identify all active users by tweaking home tenat domain filter
+# If tenant has multiple domains for home tenant users filter can be easily expanded
+# Some activity log events use user's AAD object Id instead of UPN
+# App's service principal UserId property captured in the event can be used to return accesible artifacts
+
+#Building array of all active in the last 30 days on the tenant identities 
+$u=@() #creating empty array to add new users
+
+$day=Get-date
+
+for($s=0; $s -le 30; $s++)
+{
+    $periodStart=$day.AddDays(-$s)
+    $base=$periodStart.ToString("yyyy-MM-dd")
+
+    #write-host $base
+
+    $a=Get-PowerBIActivityEvent -StartDateTime ($base+'T00:00:00.000') -EndDateTime ($base+'T23:59:59.999') -ResultType JsonString | ConvertFrom-Json
+    $c=$a.Count    
+
+    for($i=0 ; $i -lt $c; $i++)
+    {
+        $r=$a[$i]
+
+        #Write-Host "User `t`t: $($r.UserId)"
+        If ($u -notcontains $($r.UserId))        
+        {
+            $u += $($r.UserId)
+        }
+    }
+}
+
+#slimming down active user list to only UPNs that come from external domains
+#removing System, Unknown and app GUIDs
+$userList = $u | where { `
+    $_ -notlike '*domain.com' -and `    #filter for home tenant domain
+    $_ -ne 'System' -and `              #removing System triggered events    
+    $_ -ne 'Unknown' -and `             #removing events with user id as Unknown
+    $_ -notlike '*-????-????-????-*'`   #removing app guids
+    }| Sort-Object
+
+
+#iterating through the UPN list and idetifying accessible artifacts
+foreach ($i in $userList)
+{
+    write-host ("User: " + $i)
+        
+    $response=Invoke-PowerBIRESTMethod -Url ("admin/users/"+$i+"/artifactAccess") -Method Get | Convertfrom-json
+    
+    while($response.ContinuationToken -ne $null)
+    {
+        #Show interim results in a list if present
+        if($response.ArtifactAccessEntities.Length -ne 0)
+        {            
+            $response.ArtifactAccessEntities | Format-List            
+        }
+    
+        #Make another call to the API with continuation token
+        $response = Invoke-PowerBIRESTMethod -Url $response.continuationUri -Method Get | Convertfrom-json 
+    }
+
+    #Show final result in a list if present
+    if($response.ArtifactAccessEntities.Length -ne 0)
+    {        
+        $response.ArtifactAccessEntities | Format-List
+    }
+    
+    #TODO: artifactAccess API is throttled; consider adding appropriate thread sleep/execution delay
+}

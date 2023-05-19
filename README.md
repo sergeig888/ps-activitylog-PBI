@@ -12,3 +12,5 @@ Requirements:
 * User of the PS script has to login using Connect-PowerBIServiceAccount commandlet and provide Power BI tenant Admin credentials when prompted. Tenant Admin access scope is required to access Activity Log API. Users without tenant Admin privileges will not be able to successfully execute code fragments in this script. All code fragments and scenarios are annotated with "how to" instructions and common gaps/issues to watch out for.
 
 **UPDATE** [4/5/23]: replaced AAD object ID reference with UPN since AAD object ID was for beta
+
+**UPDATE** [5/19/23]: added code segment for detecting active B2B users and their artifact access
