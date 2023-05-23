@@ -204,28 +204,42 @@ $userList = $u | where { `
 
 #iterating through the UPN list and idetifying accessible artifacts
 foreach ($i in $userList)
-{
-    write-host ("User: " + $i)
-        
+{     
     $response=Invoke-PowerBIRESTMethod -Url ("admin/users/"+$i+"/artifactAccess") -Method Get | Convertfrom-json
+    
+    $r=@() #creating empty array to add all paged responses
     
     while($response.ContinuationToken -ne $null)
     {
-        #Show interim results in a list if present
+        #Building interim results array if present
         if($response.ArtifactAccessEntities.Length -ne 0)
         {            
-            $response.ArtifactAccessEntities | Format-List            
+            $r+=$response.ArtifactAccessEntities            
         }
     
         #Make another call to the API with continuation token
         $response = Invoke-PowerBIRESTMethod -Url $response.continuationUri -Method Get | Convertfrom-json 
     }
 
-    #Show final result in a list if present
+    #Capture final execution result
     if($response.ArtifactAccessEntities.Length -ne 0)
-    {        
-        $response.ArtifactAccessEntities | Format-List
+    {   
+        $r+=$response.ArtifactAccessEntities
     }
     
+     
+     #Displaying summary for identity
+     write-host ("`nUser: " + $i)
+               
+     $t=$r | Select artifactType -Unique
+
+     foreach($o in $t.artifactType)
+     {
+        $items= $r | where {$_.artifactType -eq $o}
+        write-host (([string]$o).PadRight(15) +":" + ([string]$items.artifactId.Count).PadLeft(4))
+     }
+
+     $r | Format-Table     
+        
     #TODO: artifactAccess API is throttled; consider adding appropriate thread sleep/execution delay
 }
